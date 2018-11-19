@@ -27,10 +27,10 @@ export class AgGridComponent implements OnInit {
   rowData: any;
 
   columnDefs = [
-    {headerName: '#', field: 'num'},
-    {headerName: 'ID', field: 'id'},
-    {headerName: 'Status', field: 'status' },
-    {headerName: 'In collection', field: 'stats.community.in_collection' },
+    {headerName: '#', field: 'num', menuTabs: ['columnsMenuTab']},
+    {headerName: 'ID', field: 'id', suppressMenu: true, filter: 'agNumberColumnFilter'},
+    {headerName: 'Status', field: 'status', filter: 'agTextColumnFilter'},
+    {headerName: 'In collection', field: 'stats.community.in_collection', suppressFilter: true, menuTabs: [] },
     {headerName: 'In wantlist', field: 'stats.community.in_wantlist'},
     {headerName: 'Title', field: 'title'},
     {headerName: 'Format', field: 'format', filter: 'agSetColumnFilter'},
