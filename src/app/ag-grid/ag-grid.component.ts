@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import {HttpClient, HttpErrorResponse} from '@angular/common/http';
 import 'ag-grid-enterprise';
+import {Observable} from 'rxjs';
+import {tap} from 'rxjs/operators';
 
 
 @Component({
@@ -23,6 +25,9 @@ export class AgGridComponent implements OnInit {
   private readonly pagination;
   private lastRow;
   private paginationController;
+  private gridCount = 499;
+  private pageCount;
+  private rowClassRules;
 
   rowData: any;
 
@@ -51,7 +56,19 @@ export class AgGridComponent implements OnInit {
     this.paginationPageSize = 50;
     this.pageCurrent = 1;
     this.lastRow = -1;
-    this.pagination = true;
+    this.pagination = false;
+
+    this.rowClassRules = {
+      'bold_row': function(params1) {
+        if (params1.hasOwnProperty('data') && params1.data) {
+          const format = params1.data.status;
+          const bo = format === 'Accepted';
+          return bo;
+        }
+        return false;
+      }
+    };
+
   }
 
   ngOnInit() {
@@ -76,6 +93,8 @@ export class AgGridComponent implements OnInit {
     this.gridApi = params.api;
     this.gridColumnApi = params.columnApi;
 
+    console.log('pix: ', this.gridApi.getVerticalPixelRange());
+
     this.http
       .get('https://api.discogs.com/artists/3/releases?per_page=1500&page=' + this.page)
       .subscribe(data => {
@@ -88,6 +107,13 @@ export class AgGridComponent implements OnInit {
           const server =  this.FakeServer(releases);
           const dataSource = this.ServerSideDatasource(server);
           params.api.setServerSideDatasource(dataSource);
+          // this.rowClassRules = {
+          //   'bold_row': function(params1) {
+          //     const format = params1.data.status;
+          //     const bo = format === 'Accepted';
+          //     return bo;
+          //   }
+          // };
         }
       });
   }
@@ -111,12 +137,15 @@ export class AgGridComponent implements OnInit {
     return {
       getResponse(request) {
         console.log('asking for rows: ' + request.startRow + ' to ' + request.endRow);
-        const page = that.gridApi.paginationGetPageSize() / that.paginationPageSize + 1;
-        console.log('current page: ' + Math.round(page) );
+        // const page = that.gridApi.paginationGetPageSize() / that.paginationPageSize + 1;
+        // console.log('current page: ' + Math.round(page) );
         const rowsThisPage = allData.slice(request.startRow, request.endRow);
-        const lastRow = allData.length <= request.endRow ? allData.length : -1;
+        let lastRow = allData.length <= request.endRow ? allData.length : -1;
         if (lastRow > 0) {
           that.lastRow = lastRow;
+        } else {
+          lastRow = that.gridCount;
+          that.lastRow = that.gridCount;
         }
         return {
           success: true,
@@ -127,21 +156,42 @@ export class AgGridComponent implements OnInit {
     };
   }
 
+  displayTopRow() {
+    let topRow = this.gridApi.getFirstDisplayedRow();
+    if (topRow > 0) {
+      topRow = topRow + 11;
+    }
+    return topRow;
+  }
+
+  displayBottomRow() {
+    let bottomRow = this.gridApi.getLastDisplayedRow();
+    if (bottomRow < this.gridCount) {
+      bottomRow = bottomRow - 11;
+    }
+    return bottomRow;
+  }
+
   gotoNextPage() {
     if (this.pagination) {
       this.gridApi.paginationGoToNextPage();
     } else {
-      this.pageCurrent++;
-      console.log('go to next page, row: ', this.pageCurrent * this.paginationPageSize);
-      const position = this.pageCurrent * this.paginationPageSize;
-      if (this.gridApi.paginationGetRowCount() < position + 1) {
-        this.gridApi.ensureIndexVisible(this.gridApi.paginationGetRowCount() - 1, 'bottom');
-        setTimeout(
-          () => this.gridApi.ensureIndexVisible(this.pageCurrent * this.paginationPageSize, 'top'),
-          1000);
-      } else {
-        this.gridApi.ensureIndexVisible(this.pageCurrent * this.paginationPageSize, 'top');
-      }
+      // let bottomRow = this.gridApi.getLastDisplayedRow();
+      // if (bottomRow < this.gridCount) {
+      //   bottomRow = bottomRow - 11;
+      // }
+      this.gridApi.ensureIndexVisible(this.displayBottomRow(), 'top');
+      // this.pageCurrent++;
+      // console.log('go to next page, row: ', this.pageCurrent * this.paginationPageSize);
+      // const position = this.pageCurrent * this.paginationPageSize;
+      // if (this.gridApi.paginationGetRowCount() < position + 1) {
+      //   this.gridApi.ensureIndexVisible(this.gridApi.paginationGetRowCount() - 1, 'bottom');
+      //   setTimeout(
+      //     () => this.gridApi.ensureIndexVisible(this.pageCurrent * this.paginationPageSize, 'top'),
+      //     1000);
+      // } else {
+      //   this.gridApi.ensureIndexVisible(this.pageCurrent * this.paginationPageSize, 'top');
+      // }
     }
   }
 
@@ -149,8 +199,14 @@ export class AgGridComponent implements OnInit {
     if (this.pagination) {
       this.gridApi.paginationGoToPreviousPage();
     } else {
-      this.pageCurrent--;
-      this.gridApi.ensureIndexVisible(this.pageCurrent * this.paginationPageSize, 'top');
+      // let topRow = this.gridApi.getFirstDisplayedRow();
+      // if (topRow > 0) {
+      //   topRow = topRow + 11;
+      // }
+      this.gridApi.ensureIndexVisible(this.displayTopRow(), 'bottom');
+      // console.log('top row: ', topRow);
+      // this.pageCurrent--;
+      // this.gridApi.ensureIndexVisible(this.pageCurrent * this.paginationPageSize, 'top');
     }
   }
 
@@ -161,8 +217,18 @@ export class AgGridComponent implements OnInit {
       // this.paginationController.currentPage = num;
       // this.paginationController.loadPage();
     } else {
-      this.gridApi.ensureIndexVisible(num * this.paginationPageSize, 'top');
-      this.pageCurrent = num;
+      // let topRow = this.gridApi.getFirstDisplayedRow();
+      // if (topRow > 0) {
+      //   topRow = topRow + 11;
+      // }
+      // let bottomRow = this.gridApi.getLastDisplayedRow();
+      // if (bottomRow < this.gridCount) {
+      //   bottomRow = bottomRow - 11;
+      // }
+      const pageSize = this.displayBottomRow() - this.displayTopRow();
+      this.gridApi.ensureIndexVisible(pageSize * (num - 1), 'top');
+      // this.gridApi.ensureIndexVisible(num * this.paginationPageSize, 'top');
+      // this.pageCurrent = num;
     }
   }
 
