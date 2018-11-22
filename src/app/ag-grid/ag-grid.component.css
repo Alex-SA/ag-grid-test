@@ -6,3 +6,7 @@ strong i{
   font-weight: bold;
   background-color: lightcoral !important;
 }
+
+li {display:inline-block}
+.left {float:left; margin-left: 20px;}
+.right {float:right}
